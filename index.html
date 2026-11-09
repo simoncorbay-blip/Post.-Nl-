@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Secteur Jupille</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Secteur">
+<meta name="theme-color" content="#111318">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root{
+  --bg:#111318; --panel:#1b1e25; --panel2:#252a33; --txt:#f2f4f7; --mut:#9aa3b2;
+  --orange:#ff6a13; --ok:#2ecc71; --warn:#f5b301; --line:#30363f;
+  --A:#e74c3c; --B:#e67e22; --C:#f1c40f; --D:#2ecc71; --E:#1abc9c;
+  --F:#3498db; --G:#9b59b6; --H:#e84393; --I:#95a5a6;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+  font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px}
+header h1{font-size:18px;margin:0;flex:1}
+header h1 span{color:var(--orange)}
+.tabs{display:flex;gap:6px}
+.tabs button{background:var(--panel2);color:var(--mut);border:0;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600}
+.tabs button.on{background:var(--orange);color:#fff}
+main{flex:1;overflow:auto;padding:0 16px calc(16px + env(safe-area-inset-bottom))}
+.vue{display:none}.vue.on{display:block}
+
+/* --- caméra --- */
+#cam{position:relative;border-radius:18px;overflow:hidden;background:#000;height:30vh;min-height:190px;width:100%}
+#cam video{width:100%;height:100%;object-fit:cover;display:block}
+#cadre{position:absolute;left:6%;right:6%;top:14%;bottom:14%;border:3px solid rgba(255,255,255,.9);
+  border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+#cadre.lecture{border-color:var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{50%{border-color:rgba(255,106,19,.35)}}
+#camMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:20px;color:var(--mut);font-size:15px}
+#etat{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:13px;color:#fff;text-shadow:0 1px 3px #000}
+.actions{display:flex;gap:8px;margin:12px 0}
+.btn{flex:1;border:0;border-radius:14px;padding:16px 10px;font-size:17px;font-weight:700;color:#fff;background:var(--panel2)}
+.btn.prim{background:var(--orange);flex:2}
+.btn.auto.on{background:var(--ok)}
+.btn:disabled{opacity:.5}
+#saisie{width:100%;font-size:18px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);
+  background:var(--panel);color:var(--txt);outline:none}
+#saisie:focus{border-color:var(--orange)}
+.astuce{color:var(--mut);font-size:13px;margin:6px 2px 0}
+
+/* --- résultat --- */
+#resultat{margin-top:14px}
+.carte{display:flex;gap:14px;align-items:stretch;background:var(--panel);border-radius:18px;padding:12px;margin-bottom:10px}
+.lettre{flex:0 0 96px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#111;font-weight:900;font-size:64px;line-height:1}
+.lettre small{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.carte .info{flex:1;min-width:0}
+.carte .rue{font-size:19px;font-weight:700}
+.carte .num{color:var(--orange)}
+.carte .sect{color:var(--mut);font-size:14px;margin-top:2px}
+.carte .meta{font-size:13px;color:var(--mut);margin-top:6px}
+.rem{background:rgba(245,179,1,.12);color:var(--warn);border-radius:10px;padding:6px 8px;font-size:13px;margin-top:6px}
+.note{background:rgba(46,204,113,.12);color:var(--ok);border-radius:10px;padding:6px 8px;font-size:13px;margin-top:6px}
+.carte.petite{padding:8px;opacity:.9}
+.carte.petite .lettre{flex-basis:56px;font-size:34px}
+.carte.petite .lettre small{display:none}
+.carte.petite .rue{font-size:16px}
+.lien{background:none;border:0;color:var(--orange);font-size:14px;padding:6px 0;font-weight:600}
+.vide{background:var(--panel);border-radius:18px;padding:16px;text-align:center;color:var(--mut)}
+.lu{font-size:12px;color:var(--mut);white-space:pre-wrap;background:var(--panel);border-radius:10px;padding:8px;margin-top:8px;max-height:110px;overflow:auto}
+h2{font-size:15px;color:var(--mut);margin:18px 2px 8px;text-transform:uppercase;letter-spacing:.06em}
+.histo{display:flex;gap:6px;flex-wrap:wrap}
+.histo button{border:0;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;color:#111}
+
+/* --- liste --- */
+.grp{background:var(--panel);border-radius:16px;margin-bottom:10px;overflow:hidden}
+.grp summary{list-style:none;display:flex;gap:10px;align-items:center;padding:10px 12px;font-weight:700}
+.grp summary::-webkit-details-marker{display:none}
+.pastille{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#111;font-weight:900;font-size:20px;flex:0 0 34px}
+.grp .sub{color:var(--mut);font-weight:400;font-size:13px}
+.grp ul{list-style:none;margin:0;padding:0 12px 10px}
+.grp li{padding:7px 0;border-top:1px solid var(--line);display:flex;gap:8px;font-size:15px}
+.grp li b{color:var(--mut);font-weight:600;min-width:26px}
+.grp li .x{margin-left:auto;color:var(--mut);background:none;border:0;font-size:15px}
+
+/* --- feuille d'édition --- */
+dialog{border:0;border-radius:18px;background:var(--panel);color:var(--txt);width:min(92vw,420px);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h3{margin:0 0 10px}
+dialog input,dialog textarea{width:100%;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--txt)}
+.choixS{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}
+.choixS button{border:3px solid transparent;border-radius:10px;padding:10px 0;font-size:20px;font-weight:900;color:#111}
+.choixS button.on{border-color:#fff}
+.ligne{display:flex;gap:8px;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Secteur <span>Jupille</span></h1>
+  <div class="tabs">
+    <button data-vue="scan" class="on">Scan</button>
+    <button data-vue="liste">Rues</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== SCAN ===== -->
+  <section id="v-scan" class="vue on">
+    <div id="cam">
+      <video id="video" playsinline muted autoplay></video>
+      <div id="cadre"></div>
+      <div id="camMsg">Touchez « Scanner » pour activer la caméra</div>
+      <div id="etat"></div>
+    </div>
+    <div class="actions">
+      <button class="btn prim" id="bScan">📷 Scanner</button>
+      <button class="btn auto" id="bAuto" title="Scan continu">Auto</button>
+      <button class="btn" id="bPhoto" title="Prendre / choisir une photo">🖼️</button>
+      <input type="file" id="fichier" accept="image/*" capture="environment" hidden>
+    </div>
+    <input id="saisie" type="search" placeholder="…ou tapez une rue (ex. : pocheteux)" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div id="resultat"></div>
+    <h2 id="hHisto" hidden>Derniers scans</h2>
+    <div class="histo" id="histo"></div>
+    <p class="astuce">Cadrez uniquement l'adresse du destinataire dans le rectangle. Astuce iPhone : touchez le champ de saisie puis l'icône « Scanner le texte ».</p>
+  </section>
+
+  <!-- ===== LISTE ===== -->
+  <section id="v-liste" class="vue">
+    <input id="filtre" type="search" placeholder="Filtrer les rues…" style="width:100%;font-size:17px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--txt);margin-bottom:10px">
+    <button class="btn" id="bAjout" style="width:100%;margin-bottom:12px">+ Ajouter une rue</button>
+    <div id="liste"></div>
+    <p class="astuce">Les rues ajoutées et les notes sont enregistrées sur ce téléphone.</p>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <h3 id="dlgTitre">Rue</h3>
+  <label>Nom de la rue<input id="dRue" autocomplete="off"></label>
+  <div class="choixS" id="dSect"></div>
+  <label>Note terrain<textarea id="dNote" rows="2" placeholder="ex. : code porte 1234, chien au n° 12"></textarea></label>
+  <div class="ligne">
+    <button class="btn" id="dAnnul">Annuler</button>
+    <button class="btn prim" id="dOk">Enregistrer</button>
+  </div>
+</dialog>
+
+<script src="data.js"></script>
+<script src="match.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const LETTRES = Object.keys(window.SECTEURS);
+const couleur = (s) => `var(--${LETTRES.includes(s) ? s : "I"})`;
+
+/* ---------- stockage local (ajouts, notes, historique) ---------- */
+const lire = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const ecrire = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+let ajouts = lire("ajouts", []);      // [{rue, s, notes}]
+let notes  = lire("notes", {});       // {rue: "texte"}
+let histo  = lire("histo", []);       // [{rue, s, numero}]
+
+let base = [];
+function reconstruire() {
+  const toutes = window.RUES.concat(ajouts.map((a) => ({ n: null, s: a.s, rue: a.rue, cle: a.rue, rem: "Ajoutée sur le téléphone", notes: "", ajout: true })));
+  base = Matcher.preparer(toutes);
+}
+reconstruire();
+
+/* ---------- onglets ---------- */
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".vue").forEach((v) => v.classList.toggle("on", v.id === "v-" + b.dataset.vue));
+  if (b.dataset.vue === "liste") afficherListe();
+});
+
+/* ---------- affichage du résultat ---------- */
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function carte(r, petite) {
+  const R = r.rue, S = window.SECTEURS[R.s] || { nom: "Secteur ajouté", conseil: "" };
+  const note = notes[R.rue] || R.notes;
+  return `<div class="carte ${petite ? "petite" : ""}">
+    <div class="lettre" style="background:${couleur(R.s)}">${esc(R.s)}<small>secteur</small></div>
+    <div class="info">
+      <div class="rue">${esc(R.rue)}${r.numero ? ` <span class="num">${esc(r.numero)}</span>` : ""}</div>
+      <div class="sect">${esc(S.nom)}</div>
+      ${petite ? "" : `<div class="meta">${R.n ? `Passage n° ${R.n} · ` : ""}${esc(S.conseil)}</div>
+      ${R.rem ? `<div class="rem">⚠️ ${esc(R.rem)}</div>` : ""}
+      ${note ? `<div class="note">📝 ${esc(note)}</div>` : ""}
+      <button class="lien" data-note="${esc(R.rue)}">${note ? "Modifier la note" : "+ Ajouter une note"}</button>`}
+    </div></div>`;
+}
+
+let dernierTexte = "";
+function afficher(res, texteLu) {
+  const z = $("#resultat");
+  if (!res.length) {
+    z.innerHTML = `<div class="vide">Aucune rue de la tournée reconnue.<br>
+      <button class="lien" id="bAjoutVide">+ Ajouter une rue manquante</button></div>
+      ${texteLu ? `<div class="lu">Texte lu : ${esc(texteLu)}</div>` : ""}`;
+    $("#bAjoutVide").onclick = () => ouvrirDialogue(null);
+    return;
+  }
+  const [premier, ...autres] = res;
+  const proches = autres.filter((x) => x.score >= premier.score - 0.08);
+  z.innerHTML = carte(premier, false) +
+    (proches.length ? `<h2>Autres possibilités</h2>` + proches.map((x) => carte(x, true)).join("") : "") +
+    (texteLu ? `<div class="lu">Texte lu : ${esc(texteLu)}</div>` : "");
+  z.querySelectorAll("[data-note]").forEach((b) => b.onclick = () => ouvrirDialogue(b.dataset.note));
+}
+
+function memoriser(r) {
+  histo = [{ rue: r.rue.rue, s: r.rue.s, numero: r.numero }].concat(histo.filter((h) => h.rue !== r.rue.rue)).slice(0, 12);
+  ecrire("histo", histo); afficherHisto();
+}
+function afficherHisto() {
+  $("#hHisto").hidden = !histo.length;
+  $("#histo").innerHTML = histo.map((h, i) =>
+    `<button data-i="${i}" style="background:${couleur(h.s)}">${esc(h.s)} · ${esc(h.rue.replace(/^(Rue|Avenue|Place) (de la |de l'|des |du |de |d')?/i, ""))}${h.numero ? " " + esc(h.numero) : ""}</button>`).join("");
+  $("#histo").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    const h = histo[+b.dataset.i];
+    afficher(Matcher.chercher(h.rue + (h.numero ? " " + h.numero : ""), base, 3), "");
+    window.scrollTo(0, 0);
+  });
+}
+afficherHisto();
+
+/* ---------- saisie manuelle ---------- */
+let tSaisie;
+$("#saisie").addEventListener("input", (e) => {
+  clearTimeout(tSaisie);
+  tSaisie = setTimeout(() => {
+    const t = e.target.value.trim();
+    if (!t) { $("#resultat").innerHTML = ""; return; }
+    afficher(Matcher.chercher(t, base, 5), "");
+  }, 120);
+});
+$("#saisie").addEventListener("change", (e) => {
+  const r = Matcher.chercher(e.target.value, base, 1)[0];
+  if (r) memoriser(r);
+});
+
+/* ---------- OCR (Tesseract.js, chargé à la demande) ---------- */
+let worker = null, chargementOCR = null;
+function etat(t) { $("#etat").textContent = t || ""; }
+function chargerOCR() {
+  if (chargementOCR) return chargementOCR;
+  chargementOCR = new Promise((ok, ko) => {
+    etat("Chargement de la lecture de texte…");
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = async () => {
+      try {
+        worker = await Tesseract.createWorker("fra", 1, {
+          logger: (m) => { if (m.status && m.progress < 1 && /load|init/.test(m.status)) etat("Préparation… " + Math.round(m.progress * 100) + " %"); },
+        });
+        await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1" });
+        etat(""); ok(worker);
+      } catch (e) { chargementOCR = null; ko(e); }
+    };
+    s.onerror = () => { chargementOCR = null; ko(new Error("Pas de connexion pour charger la lecture de texte")); };
+    document.head.appendChild(s);
+  });
+  return chargementOCR;
+}
+
+// Prépare l'image : recadrage, mise à l'échelle, niveaux de gris + contraste
+function preparerImage(src, sw, sh, crop) {
+  const [cx, cy, cw, ch] = crop || [0, 0, sw, sh];
+  const echelle = Math.min(1, 1400 / cw);
+  const c = document.createElement("canvas");
+  c.width = Math.round(cw * echelle); c.height = Math.round(ch * echelle);
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(src, cx, cy, cw, ch, 0, 0, c.width, c.height);
+  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+  let min = 255, max = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+    d[i] = v; if (v < min) min = v; if (v > max) max = v;
+  }
+  const k = 255 / Math.max(1, max - min);
+  for (let i = 0; i < d.length; i += 4) { const v = (d[i] - min) * k; d[i] = d[i + 1] = d[i + 2] = v; }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+
+async function lireTexte(canvas) {
+  const w = await chargerOCR();
+  const { data } = await w.recognize(canvas);
+  return (data.text || "").trim();
+}
+
+/* ---------- caméra ---------- */
+const video = $("#video");
+let flux = null, occupe = false, auto = false;
+
+async function demarrerCamera() {
+  if (flux) return true;
+  if (!navigator.mediaDevices?.getUserMedia) { $("#camMsg").textContent = "Caméra indisponible : utilisez le bouton 🖼️"; return false; }
+  try {
+    flux = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    });
+    video.srcObject = flux; await video.play();
+    $("#camMsg").hidden = true;
+    chargerOCR().catch((e) => etat(e.message));
+    return true;
+  } catch (e) {
+    $("#camMsg").textContent = "Accès caméra refusé. Autorisez-le dans Réglages › Safari › Caméra, ou utilisez 🖼️.";
+    return false;
+  }
+}
+
+// zone du cadre, en pixels de la vidéo (la vidéo est en object-fit: cover)
+function zoneCadre() {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const box = $("#cam").getBoundingClientRect(), f = $("#cadre").getBoundingClientRect();
+  const s = Math.max(box.width / vw, box.height / vh);
+  const ox = (vw * s - box.width) / 2, oy = (vh * s - box.height) / 2;
+  return [(f.left - box.left + ox) / s, (f.top - box.top + oy) / s, f.width / s, f.height / s];
+}
+
+function bip() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = 880; g.gain.value = 0.15; o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.12); o.onended = () => a.close();
+  } catch {}
+  navigator.vibrate?.(80);
+}
+
+async function scanner() {
+  if (occupe) return null;
+  if (!(await demarrerCamera()) || !video.videoWidth) return null;
+  occupe = true; $("#cadre").classList.add("lecture"); $("#bScan").disabled = true;
+  try {
+    const canvas = preparerImage(video, video.videoWidth, video.videoHeight, zoneCadre());
+    etat(worker ? "Lecture…" : "Préparation…");
+    const texte = await lireTexte(canvas);
+    const res = Matcher.chercher(texte, base, 5);
+    etat("");
+    return { texte, res };
+  } catch (e) {
+    etat(e.message || "Erreur de lecture"); return null;
+  } finally {
+    occupe = false; $("#cadre").classList.remove("lecture"); $("#bScan").disabled = false;
+  }
+}
+
+$("#bScan").onclick = async () => {
+  const r = await scanner();
+  if (!r) return;
+  afficher(r.res, r.texte);
+  if (r.res[0]) { bip(); memoriser(r.res[0]); }
+};
+
+async function boucleAuto() {
+  while (auto) {
+    const r = await scanner();
+    if (!auto) break;
+    if (r && r.res[0] && r.res[0].score >= 0.85) {
+      afficher(r.res, r.texte); bip(); memoriser(r.res[0]);
+      etat("Trouvé ✔ — scan suivant dans 2 s");
+      await new Promise((ok) => setTimeout(ok, 2000));
+      etat("");
+    } else {
+      await new Promise((ok) => setTimeout(ok, 250));
+    }
+  }
+}
+$("#bAuto").onclick = async () => {
+  auto = !auto; $("#bAuto").classList.toggle("on", auto);
+  if (auto && await demarrerCamera()) boucleAuto(); else { auto = false; $("#bAuto").classList.remove("on"); }
+};
+
+// coupe la caméra quand l'appli passe en arrière-plan (batterie)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && flux) {
+    flux.getTracks().forEach((t) => t.stop()); flux = null; video.srcObject = null;
+    auto = false; $("#bAuto").classList.remove("on");
+    $("#camMsg").hidden = false; $("#camMsg").textContent = "Touchez « Scanner » pour réactiver la caméra";
+  }
+});
+
+/* ---------- photo (secours) ---------- */
+$("#bPhoto").onclick = () => $("#fichier").click();
+$("#fichier").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const img = new Image(); img.src = URL.createObjectURL(f);
+  await img.decode();
+  etat("Lecture de la photo…");
+  try {
+    const texte = await lireTexte(preparerImage(img, img.naturalWidth, img.naturalHeight));
+    const res = Matcher.chercher(texte, base, 5);
+    afficher(res, texte); if (res[0]) { bip(); memoriser(res[0]); }
+  } catch (err) { etat(err.message); }
+  etat(""); URL.revokeObjectURL(img.src);
+};
+
+/* ---------- liste des rues ---------- */
+function afficherListe() {
+  const f = Matcher.norm($("#filtre").value).join(" ");
+  const groupes = {};
+  for (const r of base) {
+    if (f && !Matcher.norm(r.rue).join(" ").includes(f)) continue;
+    (groupes[r.s] ||= []).push(r);
+  }
+  const lettres = Object.keys(groupes).sort();
+  $("#liste").innerHTML = lettres.map((s) => {
+    const S = window.SECTEURS[s] || { nom: "Secteur ajouté" };
+    return `<details class="grp" ${f ? "open" : ""}>
+      <summary><span class="pastille" style="background:${couleur(s)}">${esc(s)}</span>
+        <span>${esc(S.nom)}<br><span class="sub">${groupes[s].length} rue(s)</span></span></summary>
+      <ul>${groupes[s].sort((a, b) => (a.n ?? 999) - (b.n ?? 999)).map((r) =>
+        `<li><b>${r.n ?? "+"}</b><span>${esc(r.rue)}${notes[r.rue] ? " 📝" : ""}</span>
+          ${r.ajout ? `<button class="x" data-suppr="${esc(r.rue)}">✕</button>` : `<button class="x" data-note="${esc(r.rue)}">✎</button>`}</li>`).join("")}</ul>
+    </details>`;
+  }).join("") || `<div class="vide">Aucune rue trouvée</div>`;
+  $("#liste").querySelectorAll("[data-note]").forEach((b) => b.onclick = () => ouvrirDialogue(b.dataset.note));
+  $("#liste").querySelectorAll("[data-suppr]").forEach((b) => b.onclick = () => {
+    if (!confirm("Supprimer « " + b.dataset.suppr + " » ?")) return;
+    ajouts = ajouts.filter((a) => a.rue !== b.dataset.suppr); ecrire("ajouts", ajouts); reconstruire(); afficherListe();
+  });
+}
+$("#filtre").oninput = afficherListe;
+$("#bAjout").onclick = () => ouvrirDialogue(null);
+
+/* ---------- dialogue : ajouter une rue / noter ---------- */
+const dlg = $("#dlg");
+let dlgRue = null, dlgSect = null;
+$("#dSect").innerHTML = LETTRES.map((s) => `<button type="button" data-s="${s}" style="background:${couleur(s)}">${s}</button>`).join("");
+$("#dSect").querySelectorAll("button").forEach((b) => b.onclick = () => {
+  dlgSect = b.dataset.s;
+  $("#dSect").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+});
+function ouvrirDialogue(rue) {
+  dlgRue = rue;
+  const existante = rue && base.find((r) => r.rue === rue);
+  $("#dlgTitre").textContent = existante ? "Note terrain" : "Ajouter une rue";
+  $("#dRue").value = rue || $("#saisie").value || "";
+  $("#dRue").disabled = !!existante;
+  $("#dSect").style.display = existante ? "none" : "";
+  dlgSect = null; $("#dSect").querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+  $("#dNote").value = rue ? (notes[rue] || existante?.notes || "") : "";
+  dlg.showModal();
+}
+$("#dAnnul").onclick = () => dlg.close();
+$("#dOk").onclick = () => {
+  const nom = $("#dRue").value.trim();
+  if (!nom) return;
+  const existante = dlgRue && base.find((r) => r.rue === dlgRue);
+  if (!existante) {
+    if (!dlgSect) { alert("Choisissez un secteur (A à I)"); return; }
+    ajouts = ajouts.filter((a) => a.rue !== nom).concat({ rue: nom, s: dlgSect });
+    ecrire("ajouts", ajouts); reconstruire();
+  }
+  const n = $("#dNote").value.trim();
+  if (n) notes[nom] = n; else delete notes[nom];
+  ecrire("notes", notes);
+  dlg.close();
+  afficherListe();
+  const t = $("#saisie").value.trim() || nom;
+  afficher(Matcher.chercher(t, base, 5), "");
+};
+
+/* ---------- hors-ligne ---------- */
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
