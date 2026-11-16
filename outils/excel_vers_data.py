@@ -10,7 +10,7 @@ wb = openpyxl.load_workbook(src, data_only=True)
 
 secteurs = {}
 for r in wb["Résumé secteurs"].iter_rows(min_row=4, values_only=True):
-    if r[1] and isinstance(r[0], int):
+    if r[1] and isinstance(r[0], int) and r[2]:
         secteurs[r[1]] = {"nom": r[2], "conseil": r[3]}
 
 principal = {}
@@ -24,8 +24,15 @@ for r in wb["Ordre de passage"].iter_rows(min_row=5, values_only=True):
         continue
     rues.append({
         "n": r[0], "s": r[1], "rue": r[3], "cle": principal.get(r[3], r[3]),
-        "rem": r[5] or "", "notes": r[6] or "",
+        "rem": r[5] or "", "notes": r[6] or "", "cp": "4020",
     })
+
+# Rues de Beyne-Heusay (4610) : onglet dédié
+if "Beyne-Heusay" in wb.sheetnames:
+    for r in wb["Beyne-Heusay"].iter_rows(min_row=5, values_only=True):
+        if r[0] and r[1]:
+            rues.append({"n": None, "s": str(r[1]).strip().upper(), "rue": r[0], "cle": r[0],
+                         "rem": r[2] or "", "notes": r[3] or "", "cp": "4610"})
 
 if "Rues à placer" in wb.sheetnames:
     for r in wb["Rues à placer"].iter_rows(min_row=5, values_only=True):

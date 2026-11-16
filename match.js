@@ -56,17 +56,26 @@
     });
   }
 
-  // Retire « 4020 Jupille-sur-Meuse », « 4020 Liège », etc. (code postal + ville)
+  // Localités → code postal (pour départager une même rue dans deux communes)
+  const LOCALITES = { jupille: "4020", bressoux: "4020", wandre: "4020", beyne: "4610", heusay: "4610", bellaire: "4610", queue: "4610" };
+  const VILLE = new Set(["jupille", "sur", "meuse", "liege", "beyne", "heusay", "bellaire", "bressoux",
+    "wandre", "fleron", "herstal", "chenee", "grivegnee", "queue", "lez"]);
+
+  // Retire « 4020 Jupille-sur-Meuse », « 4610 Beyne-Heusay », « 4610 Queue-du-Bois »…
+  // et note le code postal trouvé (4020, 4610).
   function retirerVille(mots) {
     const out = [];
+    let cp = null;
     for (let i = 0; i < mots.length; i++) {
       if (/^\d{4}$/.test(mots[i]) && mots[i][0] === "4") {
-        // saute la ville qui suit (jusqu'à 3 mots, ex. jupille sur meuse)
+        if (mots[i] === "4020" || mots[i] === "4610") cp = mots[i];
         let j = i + 1;
-        if (j < mots.length && /^[a-z]+$/.test(mots[j])) {
-          j++;
-          if (mots[j] === "sur" && j + 1 < mots.length) j += 2;
-          else if (mots[j - 1] === "beyne" && mots[j] === "heusay") j++;
+        while (j < mots.length && j < i + 4) {
+          if (VILLE.has(mots[j])) {
+            if (!cp && LOCALITES[mots[j]]) cp = LOCALITES[mots[j]];
+            if (mots[j] === "queue" && mots[j + 1] === "du" && mots[j + 2] === "bois") j += 2;
+            j++;
+          } else break;
         }
         i = j - 1;
         continue;
@@ -74,7 +83,7 @@
       if (mots[i] === "belgique" || mots[i] === "belgium" || mots[i] === "be") continue;
       out.push(mots[i]);
     }
-    return out;
+    return { mots: out, cp };
   }
 
   // Similarité entre une fenêtre de mots du texte et la clé de la rue
@@ -96,7 +105,7 @@
   }
 
   function chercher(texte, base, max = 5) {
-    const mots = retirerVille(norm(texte));
+    const { mots, cp } = retirerVille(norm(texte));
     if (!mots.length) return [];
     const res = [];
     for (const r of base) {
@@ -122,12 +131,14 @@
       }
       // nom de ville seul (« Liège », « Meuse »…) : pénalisé, sauf saisie courte à la main
       if (r._ambigu && !typeAvant && mots.length > 2) best *= 0.6;
+      // code postal lu sur l'étiquette : favorise la bonne commune
+      if (cp && r.cp && best >= 0.72) best += r.cp === cp ? 0.05 : -0.05;
       if (best >= 0.72) res.push({ rue: r, score: Math.min(1, best), brut: best, numero: trouverNumero(mots, pos) });
     }
     res.sort((a, b) => b.brut - a.brut || b.rue._cleTxt.length - a.rue._cleTxt.length);
     // dédoublonne : garde une seule entrée par rue
     const vu = new Set();
-    return res.filter((x) => !vu.has(x.rue.rue) && vu.add(x.rue.rue)).slice(0, max);
+    return res.filter((x) => { const k = x.rue.rue + "|" + (x.rue.cp || ""); return !vu.has(k) && vu.add(k); }).slice(0, max);
   }
 
   const api = { norm, preparer, chercher, sim };
