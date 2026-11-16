@@ -28,6 +28,7 @@ header h1 span{color:var(--orange)}
 .tabs{display:flex;gap:6px}
 .tabs button{background:var(--panel2);color:var(--mut);border:0;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600}
 .tabs button.on{background:var(--orange);color:#fff}
+.tabs .lienTab{background:var(--panel2);color:var(--mut);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;text-decoration:none}
 main{flex:1;overflow:auto;padding:0 16px calc(16px + env(safe-area-inset-bottom))}
 .vue{display:none}.vue.on{display:block}
 
@@ -103,6 +104,7 @@ dialog input,dialog textarea{width:100%;font-size:16px;padding:10px;border-radiu
   <div class="tabs">
     <button data-vue="scan" class="on">Scan</button>
     <button data-vue="liste">Rues</button>
+    <a href="itineraire.html" class="lienTab">GPS</a>
   </div>
 </header>
 
