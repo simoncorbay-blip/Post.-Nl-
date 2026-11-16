@@ -27,12 +27,18 @@ for r in wb["Ordre de passage"].iter_rows(min_row=5, values_only=True):
         "rem": r[5] or "", "notes": r[6] or "", "cp": "4020",
     })
 
-# Rues de Beyne-Heusay (4610) : onglet dédié
-if "Beyne-Heusay" in wb.sheetnames:
-    for r in wb["Beyne-Heusay"].iter_rows(min_row=5, values_only=True):
-        if r[0] and r[1]:
-            rues.append({"n": None, "s": str(r[1]).strip().upper(), "rue": r[0], "cle": r[0],
-                         "rem": r[2] or "", "notes": r[3] or "", "cp": "4610"})
+# Onglets complémentaires (même format) : N° de passage, Secteur, Nom du secteur,
+# Rue, Code postal, Profil / conseil, Remarque, Notes terrain
+for onglet in ("Médiacité – Grivegnée", "Beyne-Heusay"):
+    if onglet not in wb.sheetnames:
+        continue
+    for r in wb[onglet].iter_rows(min_row=5, values_only=True):
+        if not r[1] or not r[3]:
+            continue
+        s = str(r[1]).strip().upper()
+        secteurs.setdefault(s, {"nom": r[2] or s, "conseil": r[5] or ""})
+        rues.append({"n": r[0], "s": s, "rue": r[3], "cle": r[3], "rem": r[6] or "",
+                     "notes": r[7] or "", "cp": str(r[4] or "")})
 
 if "Rues à placer" in wb.sheetnames:
     for r in wb["Rues à placer"].iter_rows(min_row=5, values_only=True):

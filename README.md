@@ -1,6 +1,6 @@
-# Secteur Jupille – appli iPhone pour la tournée PostNL (4020)
+# Secteur Jupille – appli iPhone pour la tournée PostNL (Jupille, Médiacité, Grivegnée, Beyne-Heusay)
 
-Scanne l'adresse d'un colis avec la caméra de l'iPhone : l'appli affiche **en grand la lettre du secteur (A à I)**, le nom du secteur, le n° de passage, le conseil de livraison et les remarques/notes de la rue.
+Scanne l'adresse d'un colis avec la caméra de l'iPhone : l'appli affiche **en grand la lettre du secteur**, le nom du secteur, le n° de passage, le conseil de livraison et les remarques/notes de la rue.
 
 ## Installer sur l'iPhone
 
@@ -8,6 +8,17 @@ Scanne l'adresse d'un colis avec la caméra de l'iPhone : l'appli affiche **en g
 2. Bouton **Partager** → **Sur l'écran d'accueil** → **Ajouter**.
 3. Lancer l'appli depuis l'icône orange, autoriser la caméra.
 4. Premier scan avec du réseau (≈ 5 Mo téléchargés une seule fois) ; ensuite l'appli fonctionne aussi hors connexion.
+
+## Secteurs
+
+| Secteurs | Zone | Source dans l'Excel |
+|---|---|---|
+| A à I | Jupille (4020) | onglet « Ordre de passage » |
+| J | Médiacité – Longdoz (4020) | onglet « Médiacité – Grivegnée » |
+| K | Grivegnée (4030) | onglet « Médiacité – Grivegnée » |
+| L | Beyne-Heusay (4610) | onglet « Beyne-Heusay » |
+
+L'appli lit aussi le code postal sur l'étiquette pour départager une même rue présente dans deux communes (ex. Rue de Bois de Breux en 4020 et en 4030).
 
 ## Utilisation
 
@@ -29,9 +40,9 @@ Sur GitHub : **Settings → Pages → Source : Deploy from a branch**, choisir l
 
 ## Mettre à jour la liste des rues
 
-1. Modifier l'Excel `data/Tournee_PostNL_Jupille.xlsx` (y compris l'onglet « Rues à placer »).
+1. Modifier l'Excel `data/Tournee_PostNL_Jupille.xlsx` (onglets « Ordre de passage », « Médiacité – Grivegnée », « Beyne-Heusay », « Rues à placer »).
 2. Lancer `python3 outils/excel_vers_data.py data/Tournee_PostNL_Jupille.xlsx` (régénère `data.js`).
-3. Pousser les fichiers sur GitHub. Dans `sw.js`, changer `secteur-v1` en `secteur-v2` pour forcer la mise à jour sur l'iPhone.
+3. Pousser les fichiers sur GitHub. Dans `sw.js`, augmenter le numéro de `VERSION` (ex. `secteur-v2` → `secteur-v3`) pour forcer la mise à jour sur l'iPhone.
 
 ## Fichiers
 

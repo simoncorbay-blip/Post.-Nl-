@@ -8,7 +8,7 @@
     impasse: "imp", chaussee: "ch", chee: "ch",
   };
   const TYPES = new Set(["rue", "r", "av", "pl", "bd", "imp", "ch", "clos", "cite",
-    "dreve", "thier", "allee", "chemin", "quai", "voie", "sentier", "square"]);
+    "dreve", "thier", "allee", "chemin", "quai", "voie", "sentier", "square", "waide", "voisinage"]);
   const PARTICULES = new Set(["de", "du", "des", "la", "le", "l", "d", "les", "a", "au", "aux"]);
   // Noms qui sont aussi des noms de villes / communes : on exige le type de voie devant
   const AMBIGUS = new Set(["liege", "meuse", "fleron", "beyne", "vise", "jupille"]);
@@ -49,6 +49,7 @@
       const complet = norm(r.rue);
       // mots significatifs (sans type ni particules), à partir du nom principal
       let cle = norm(r.cle).filter((w) => !PARTICULES.has(w));
+      if (cle.length > 1 && TYPES.has(cle[0])) cle = cle.slice(1);   // « Rue de Bois de Breux » → « bois breux »
       if (!cle.length) cle = complet.filter((w) => !TYPES.has(w) && !PARTICULES.has(w));
       const type = TYPES.has(complet[0]) ? complet[0] : null;
       const ambigu = cle.length === 1 && AMBIGUS.has(cle[0]);
@@ -57,7 +58,7 @@
   }
 
   // Localités → code postal (pour départager une même rue dans deux communes)
-  const LOCALITES = { jupille: "4020", bressoux: "4020", wandre: "4020", beyne: "4610", heusay: "4610", bellaire: "4610", queue: "4610" };
+  const LOCALITES = { jupille: "4020", bressoux: "4020", wandre: "4020", beyne: "4610", heusay: "4610", bellaire: "4610", queue: "4610", grivegnee: "4030" };
   const VILLE = new Set(["jupille", "sur", "meuse", "liege", "beyne", "heusay", "bellaire", "bressoux",
     "wandre", "fleron", "herstal", "chenee", "grivegnee", "queue", "lez"]);
 
@@ -68,7 +69,7 @@
     let cp = null;
     for (let i = 0; i < mots.length; i++) {
       if (/^\d{4}$/.test(mots[i]) && mots[i][0] === "4") {
-        if (mots[i] === "4020" || mots[i] === "4610") cp = mots[i];
+        if (["4020", "4030", "4610"].includes(mots[i])) cp = mots[i];
         let j = i + 1;
         while (j < mots.length && j < i + 4) {
           if (VILLE.has(mots[j])) {
@@ -87,13 +88,22 @@
   }
 
   // Similarité entre une fenêtre de mots du texte et la clé de la rue
-  function scoreFenetre(fen, cle) {
+  // une initiale (« R. ») vaut le prénom complet (« Raymond »)
+  const simMot = (f, c) => (f.length === 1 && c.length > 1 && f === c[0] ? 1 : sim(f, c));
+
+  function scoreFenetre(fen, cle, sansPrenom = true) {
     // compare mot à mot ET en bloc (l'OCR colle ou coupe parfois les mots)
     let s = 0;
-    for (let k = 0; k < cle.length; k++) s += sim(fen[k] || "", cle[k]) * cle[k].length;
+    for (let k = 0; k < cle.length; k++) s += (k < cle.length - 1 ? simMot : sim)(fen[k] || "", cle[k]) * cle[k].length;
     const parMot = s / cle.reduce((t, w) => t + w.length, 0);
     const bloc = sim(fen.join(""), cle.join(""));
-    return Math.max(parMot, bloc);
+    let sc = Math.max(parMot, bloc);
+    // un mot très court ne doit pas « matcher » une longue clé
+    if (fen.join("").length < cle.join("").length * 0.6 && !fen.some((w) => w.length === 1)) sc *= 0.7;
+    // prénom omis : « Bd Poincaré » pour « Boulevard Raymond Poincaré »
+    if (sansPrenom && cle.length >= 2 && fen.length === cle.length - 1 && cle[cle.length - 1].length >= 5)
+      sc = Math.max(sc, scoreFenetre(fen, cle.slice(1), false) * 0.95);
+    return sc;
   }
 
   function trouverNumero(mots, apres) {
@@ -117,12 +127,10 @@
           const fen = mots.slice(i, i + len).filter((w) => !PARTICULES.has(w));
           if (!fen.length) continue;
           let sc = scoreFenetre(fen, r._cle);
-          // un mot très court ne doit pas « matcher » une longue clé
-          if (fen.join("").length < r._cleTxt.replace(/ /g, "").length * 0.6) sc *= 0.7;
           // le type de voie juste avant (en sautant les particules) ?
           let k = i - 1;
           while (k >= 0 && PARTICULES.has(mots[k])) k--;
-          const t = k >= 0 && (TYPES.has(mots[k]) || (r._type && sim(mots[k], r._type) >= 0.75));
+          const t = k >= 0 && (TYPES.has(mots[k]) || (r._type && sim(mots[k], r._type) >= 0.65));
           if (t) sc += 0.06;
           // type exact (Rue ≠ Place) : départage Rue/Place Gît-le-Coq, Rue/Place de Meuse
           if (k >= 0 && r._type && mots[k] === r._type) sc += 0.03;
@@ -131,6 +139,8 @@
       }
       // nom de ville seul (« Liège », « Meuse »…) : pénalisé, sauf saisie courte à la main
       if (r._ambigu && !typeAvant && mots.length > 2) best *= 0.6;
+      // nom d'un seul mot sans « Rue » devant (Louis, Billy, Gilon…) : peut être un nom de personne
+      else if (L === 1 && !typeAvant && mots.length > 2) best *= 0.85;
       // code postal lu sur l'étiquette : favorise la bonne commune
       if (cp && r.cp && best >= 0.72) best += r.cp === cp ? 0.05 : -0.05;
       if (best >= 0.72) res.push({ rue: r, score: Math.min(1, best), brut: best, numero: trouverNumero(mots, pos) });

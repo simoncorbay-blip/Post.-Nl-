@@ -1,5 +1,5 @@
 // Service worker : l'appli fonctionne hors connexion après la 1re ouverture
-const VERSION = "secteur-v1";
+const VERSION = "secteur-v2";
 const COQUILLE = ["./", "index.html", "data.js", "match.js", "manifest.json", "icons/icon-180.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
